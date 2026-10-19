@@ -1,7 +1,10 @@
 //! Widgets and keyboard interaction; search and discovery live in separate modules.
 use crate::{catalog::Catalog, search};
 use gtk::{gdk, glib, prelude::*};
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 pub struct SearchWindow(Rc<View>);
 
@@ -54,6 +57,14 @@ impl SearchWindow {
             .child(&content)
             .build();
         window.add_css_class("turbo-search");
+        // Wait for actual activation before dismissing: mapping on Wayland is asynchronous.
+        let was_active = Cell::new(false);
+        window.connect_is_active_notify(move |window| {
+            let active = window.is_active();
+            if was_active.replace(active) && !active {
+                window.set_visible(false);
+            }
+        });
         let css = gtk::CssProvider::new();
         css.load_from_data(include_str!("style.css"));
         gtk::style_context_add_provider_for_display(
@@ -115,19 +126,41 @@ impl SearchWindow {
             view.window.set_visible(false);
         } else {
             // Refresh on opening so installations appear without a filesystem watcher.
-            *view.catalog.borrow_mut() = Catalog::discover();
-            view.entry.set_text("");
-            view.render();
+            view.refresh_catalog(Catalog::discover());
             if let Some(token) = activation_token {
                 view.window.set_startup_id(token);
             }
             view.window.present();
-            view.entry.grab_focus();
+            view.entry.grab_focus_without_selecting();
         }
     }
 }
 
 impl View {
+    fn refresh_catalog(&self, catalog: Catalog) {
+        // Preserve identity, not the old index: installations can reorder the catalog.
+        let selected_id = self.list.selected_row().and_then(|row| {
+            self.results
+                .borrow()
+                .get(row.index() as usize)
+                .map(|&index| self.catalog.borrow().entries[index].id.clone())
+        });
+        *self.catalog.borrow_mut() = catalog;
+        self.render();
+        if let Some(id) = selected_id {
+            let catalog = self.catalog.borrow();
+            if let Some(position) = self
+                .results
+                .borrow()
+                .iter()
+                .position(|&index| catalog.entries[index].id == id)
+            {
+                self.list
+                    .select_row(self.list.row_at_index(position as i32).as_ref());
+            }
+        }
+    }
+
     fn render(&self) {
         while let Some(child) = self.list.first_child() {
             self.list.remove(&child);
@@ -229,7 +262,7 @@ mod tests {
                 search::SearchEntry::new("code".into(), "Code".into()),
                 search::SearchEntry::new("broken".into(), "Code Broken".into()),
             ],
-            apps: vec![success, failure],
+            apps: vec![success.clone(), failure.clone()],
         };
         assert!(view.results.borrow().is_empty());
         assert!(!view.list.get_visible());
@@ -240,6 +273,18 @@ mod tests {
         assert_eq!(view.list.selected_row().unwrap().index(), 0);
         view.window.present();
         view.move_selection(1);
+        view.entry.set_position(2);
+        view.refresh_catalog(Catalog {
+            entries: vec![
+                search::SearchEntry::new("broken".into(), "Code Broken".into()),
+                search::SearchEntry::new("code".into(), "Code".into()),
+            ],
+            apps: vec![failure, success],
+        });
+        assert_eq!(view.entry.text(), "code");
+        assert_eq!(view.entry.position(), 2);
+        assert_eq!(view.list.selected_row().unwrap().index(), 1);
+        assert_eq!(*view.results.borrow(), [1, 0]);
         view.launch();
         assert!(view.window.is_visible());
         assert!(view.status.text().starts_with("No se pudo abrir"));
@@ -256,7 +301,7 @@ mod tests {
         assert!(!view.list.get_visible());
         assert!(!view.status.get_visible());
         window.toggle(None);
-        assert!(view.entry.text().is_empty());
+        assert_eq!(view.entry.text(), "   ");
         assert!(!view.list.get_visible());
         assert!(!view.status.get_visible());
         window.toggle(None);

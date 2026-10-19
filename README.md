@@ -2,7 +2,10 @@
 
 Lanzador de aplicaciones para **GNOME sobre Wayland**, escrito en Rust y GTK4.
 Alt + Espacio abre la búsqueda; escribí un nombre, seleccioná con ↑/↓ y pulsá
-Enter. Escape oculta la ventana. También podés abrir resultados con un clic.
+Enter. Escape o hacer clic fuera ocultan la ventana. Al volver con Alt + Espacio
+se conserva la consulta, el cursor y la aplicación seleccionada (si sigue disponible).
+La consulta se mantiene solo mientras el proceso está abierto, sin guardarla en disco.
+También podés abrir resultados con un clic.
 
 ## Instalar y usar
 
@@ -54,7 +57,7 @@ si sus entradas están exportadas en las rutas XDG de la sesión.
 
 La búsqueda ignora mayúsculas, admite coincidencias parciales y ordena primero
 coincidencias exactas, luego prefijos y finalmente coincidencias internas.
-Al abrir muestra solo la barra; al escribir aparecen hasta cinco resultados con
+Al iniciar por primera vez muestra solo la barra; al escribir aparecen hasta cinco resultados con
 orden determinista. Al borrar la consulta vuelve a quedar compacta. El panel tiene
 fondo negro al 82% de opacidad, bordes redondeados y texto opaco para mantener
 la legibilidad. El lanzamiento usa GIO;
@@ -134,4 +137,4 @@ de fase 0 no representan el consumo de esta nueva versión con catálogo.
 Validación de esta entrega: formato y Clippy correctos; cinco pruebas de comandos
  y búsqueda, cuatro pruebas del instalador y una prueba de interfaz en Wayland
 correctas. Esta última verifica resultados, selección, apertura de un proceso de
-prueba, error de lanzamiento, ausencia de resultados y limpieza al reabrir.
+prueba, error de lanzamiento, ausencia de resultados y conservación de consulta y selección al actualizar el catálogo.

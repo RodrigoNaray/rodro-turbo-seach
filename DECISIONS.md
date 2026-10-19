@@ -83,3 +83,16 @@ El fondo usa negro con alfa 0,82 y esquinas de 24 píxeles lógicos. Se aplica
 transparencia al fondo, conservando texto e iconos opacos. Los estados de selección
 son neutros para evitar el acento azul del tema. No se agrega desenfoque ni una
 dependencia del compositor.
+
+## 2026-10-19 — Ocultar al perder foco y retomar la consulta
+
+La ventana se oculta cuando GTK notifica que deja de estar activa después de
+haber recibido foco. No se interceptan clics globales; GNOME/Wayland comunica
+el cambio de activación. La primera apertura espera a recibir foco para evitar
+ocultarse durante el mapeo asíncrono.
+
+Alt + Espacio conserva la consulta y la posición del cursor. Al refrescar el
+catálogo, la selección se restaura por identificador de aplicación; si desaparece,
+se selecciona el primer resultado disponible. Escape y el lanzamiento también
+conservan la consulta. Esto reemplaza la limpieza al reabrir de la fase inicial.
+El estado se mantiene únicamente en memoria durante la sesión del proceso.
