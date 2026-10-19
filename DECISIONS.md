@@ -96,3 +96,21 @@ catálogo, la selección se restaura por identificador de aplicación; si desapa
 se selecciona el primer resultado disponible. Escape y el lanzamiento también
 conservan la consulta. Esto reemplaza la limpieza al reabrir de la fase inicial.
 El estado se mantiene únicamente en memoria durante la sesión del proceso.
+
+## 2026-10-19 — Calculadora integrada
+
+El usuario solicitó guardar los cambios de foco y continuidad en un commit y
+avanzar con la calculadora. Se agrega un módulo puro con un parser aritmético
+pequeño, sin dependencias nuevas ni evaluación de código. Respeta precedencia,
+asociatividad de potencias, signos y paréntesis. Se limita a 1.024 bytes y 64
+niveles de anidamiento para no bloquear la interfaz con entradas patológicas.
+
+La interfaz reconoce expresiones numéricas y ofrece un resultado copiable con
+Enter o clic. Una expresión incompleta no se confunde con una búsqueda sin
+coincidencias. Las consultas con letras ajenas a notación científica siguen
+buscando aplicaciones; el prefijo `=` permite forzar la calculadora.
+
+Se usa f64 con presentación de 12 cifras significativas para reducir artefactos
+visuales habituales. Se detectan divisiones por cero y resultados no finitos.
+El porcentaje es un operador posfijo que divide por 100. No se agrega historial
+ni persistencia, y el portapapeles se modifica solo al activar el resultado.

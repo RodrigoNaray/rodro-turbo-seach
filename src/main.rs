@@ -1,3 +1,4 @@
+mod calculator;
 mod catalog;
 mod cli;
 mod platform;

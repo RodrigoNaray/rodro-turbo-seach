@@ -1,5 +1,5 @@
 //! Widgets and keyboard interaction; search and discovery live in separate modules.
-use crate::{catalog::Catalog, search};
+use crate::{calculator, catalog::Catalog, search};
 use gtk::{gdk, glib, prelude::*};
 use std::{
     cell::{Cell, RefCell},
@@ -13,6 +13,9 @@ struct View {
     entry: gtk::Entry,
     list: gtk::ListBox,
     status: gtk::Label,
+    calculator: gtk::Button,
+    calculation_label: gtk::Label,
+    calculation: RefCell<Option<String>>,
     catalog: RefCell<Catalog>,
     results: RefCell<Vec<usize>>,
 }
@@ -20,13 +23,14 @@ struct View {
 impl SearchWindow {
     pub fn new(app: &gtk::Application) -> Self {
         let entry = gtk::Entry::builder()
-            .placeholder_text("Buscar aplicaciones…")
+            .placeholder_text("Buscar aplicaciones o calcular…")
             .hexpand(true)
             .build();
-        entry.set_icon_from_icon_name(
-            gtk::EntryIconPosition::Primary,
-            Some("system-search-symbolic"),
-        );
+        // Embed the SVG so the search bar also works before installation.
+        let logo = gtk::gio::BytesIcon::new(&glib::Bytes::from_static(include_bytes!(
+            "../assets/rodro-turbo-search-v2-rayo.svg"
+        )));
+        entry.set_icon_from_gicon(gtk::EntryIconPosition::Primary, Some(&logo));
         entry.add_css_class("search-entry");
         let list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::Single)
@@ -35,6 +39,23 @@ impl SearchWindow {
         list.add_css_class("search-results");
         let status = gtk::Label::builder().wrap(true).xalign(0.0).build();
         status.add_css_class("dim-label");
+        let calculation_label = gtk::Label::builder()
+            .xalign(0.0)
+            .hexpand(true)
+            .ellipsize(gtk::pango::EllipsizeMode::End)
+            .build();
+        calculation_label.add_css_class("calculation-value");
+        let calculation_content = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        calculation_content.append(&gtk::Image::from_icon_name(
+            "accessories-calculator-symbolic",
+        ));
+        calculation_content.append(&calculation_label);
+        calculation_content.append(&gtk::Image::from_icon_name("edit-copy-symbolic"));
+        let calculator = gtk::Button::builder()
+            .child(&calculation_content)
+            .tooltip_text("Copiar resultado")
+            .build();
+        calculator.add_css_class("calculation");
         let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
         for set_margin in [
             WidgetExt::set_margin_top,
@@ -45,11 +66,13 @@ impl SearchWindow {
             set_margin(&content, 16);
         }
         content.append(&entry);
+        content.append(&calculator);
         content.append(&list);
         content.append(&status);
         let window = gtk::ApplicationWindow::builder()
             .application(app)
             .title("Rodro Turbo Search")
+            .icon_name("io.github.rodro.TurboSearch")
             .default_width(600)
             .resizable(false)
             .decorated(false)
@@ -78,6 +101,9 @@ impl SearchWindow {
             entry,
             list,
             status,
+            calculator,
+            calculation_label,
+            calculation: RefCell::new(None),
             catalog: RefCell::new(Catalog::discover()),
             results: RefCell::new(Vec::new()),
         });
@@ -90,14 +116,20 @@ impl SearchWindow {
         let weak = Rc::downgrade(&view);
         view.entry.connect_activate(move |_| {
             if let Some(view) = weak.upgrade() {
-                view.launch();
+                view.activate_selected();
             }
         });
         let weak = Rc::downgrade(&view);
         view.list.connect_row_activated(move |list, row| {
             list.select_row(Some(row));
             if let Some(view) = weak.upgrade() {
-                view.launch();
+                view.activate_selected();
+            }
+        });
+        let weak = Rc::downgrade(&view);
+        view.calculator.connect_clicked(move |_| {
+            if let Some(view) = weak.upgrade() {
+                view.activate_selected();
             }
         });
         let keys = gtk::EventControllerKey::new();
@@ -165,12 +197,35 @@ impl View {
         while let Some(child) = self.list.first_child() {
             self.list.remove(&child);
         }
-        let catalog = self.catalog.borrow();
+        self.results.borrow_mut().clear();
+        *self.calculation.borrow_mut() = None;
+        self.calculator.set_visible(false);
         let query = self.entry.text();
         let searching = !query.trim().is_empty();
+        self.status.set_visible(searching);
+        match calculator::evaluate(&query) {
+            calculator::Evaluation::NotExpression => {}
+            evaluation => {
+                self.list.set_visible(false);
+                match evaluation {
+                    calculator::Evaluation::Result(value) => {
+                        self.calculation_label.set_text(&format!("= {value}"));
+                        self.calculator.set_visible(true);
+                        self.status.set_text("Enter o clic para copiar y ocultar");
+                        *self.calculation.borrow_mut() = Some(value);
+                    }
+                    calculator::Evaluation::Incomplete => {
+                        self.status.set_text("Completá la operación…")
+                    }
+                    calculator::Evaluation::Error(message) => self.status.set_text(message),
+                    calculator::Evaluation::NotExpression => unreachable!(),
+                }
+                return;
+            }
+        }
+        let catalog = self.catalog.borrow();
         let results = search::search(&catalog.entries, &query, 5);
         self.list.set_visible(!results.is_empty());
-        self.status.set_visible(searching);
         for &index in &results {
             let row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
             row.add_css_class("app-result");
@@ -209,7 +264,12 @@ impl View {
         self.entry.grab_focus();
     }
 
-    fn launch(&self) {
+    fn activate_selected(&self) {
+        if let Some(value) = self.calculation.borrow().as_ref() {
+            WidgetExt::display(&self.window).clipboard().set_text(value);
+            self.window.set_visible(false);
+            return;
+        }
         let Some(row) = self.list.selected_row() else {
             return;
         };
@@ -285,17 +345,33 @@ mod tests {
         assert_eq!(view.entry.position(), 2);
         assert_eq!(view.list.selected_row().unwrap().index(), 1);
         assert_eq!(*view.results.borrow(), [1, 0]);
-        view.launch();
+        view.activate_selected();
         assert!(view.window.is_visible());
         assert!(view.status.text().starts_with("No se pudo abrir"));
         view.move_selection(-1);
-        view.launch();
+        view.activate_selected();
         assert!(!view.window.is_visible());
         view.entry.set_text("no matching application");
         assert!(view.results.borrow().is_empty());
         view.move_selection(1);
-        view.launch();
+        view.activate_selected();
         assert!(view.list.selected_row().is_none());
+        view.entry.set_text("125 * 1.22");
+        assert_eq!(view.calculation.borrow().as_deref(), Some("152.5"));
+        assert_eq!(view.calculation_label.text(), "= 152.5");
+        assert!(view.calculator.get_visible());
+        assert!(!view.list.get_visible());
+        assert!(view.results.borrow().is_empty());
+        view.entry.set_text("125 *");
+        assert!(view.calculation.borrow().is_none());
+        assert!(!view.calculator.get_visible());
+        view.entry.set_text("1/0");
+        assert!(view.status.text().contains("cero"));
+        view.activate_selected(); // Invalid expressions must never launch an app.
+        view.entry.set_text("code");
+        assert!(!view.calculator.get_visible());
+        assert!(view.calculation.borrow().is_none());
+        assert!(!view.results.borrow().is_empty());
         view.entry.set_text("   ");
         assert!(view.results.borrow().is_empty());
         assert!(!view.list.get_visible());

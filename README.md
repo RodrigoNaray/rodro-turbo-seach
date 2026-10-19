@@ -45,6 +45,7 @@ Ubicaciones predeterminadas:
 
 - Ejecutable: `~/.local/bin/rodro-turbo-search`.
 - Acceso: `~/.local/share/applications/io.github.rodro.TurboSearch.desktop`.
+- Icono: `~/.local/share/icons/hicolor/scalable/apps/io.github.rodro.TurboSearch.svg`.
 - Inicio de sesión: `~/.config/autostart/io.github.rodro.TurboSearch.desktop`.
 - Estado para desinstalar: `~/.local/share/rodro-turbo-search/install-state.json`.
 
@@ -65,6 +66,34 @@ los errores quedan visibles y no cierran el buscador.
 
 GApplication mantiene una sola instancia por sesión, con comunicación D-Bus local.
 No usa red, telemetría, base de datos, historial ni búsqueda de archivos.
+
+## Calculadora
+
+Escribí una operación en la misma barra y el resultado aparece inmediatamente.
+**Enter** o un clic en el resultado lo copia al portapapeles y oculta la barra.
+No se copia nada mientras escribís. Alt + Espacio permite volver a la misma operación.
+
+| Expresión | Resultado |
+| --- | --- |
+| `125 * 1.22` | `152.5` |
+| `(2 + 3) * 4` | `20` |
+| `2^8` | `256` |
+| `200 * 15%` | `30` |
+| `1,5 + 0,5` | `2` |
+
+Admite `+`, `-`, `*`, `/`, `^`, paréntesis, signos, porcentajes y notación
+científica (`1e-3`). También acepta `×`, `÷` y `−`. La coma y el punto se interpretan
+como separadores decimales, sin separadores de miles. `%` convierte el valor
+anterior en una fracción de cien: `15% = 0.15`.
+
+Un número entero solo sigue buscando aplicaciones; `=42` fuerza el modo de
+calculadora. Nombres como `7-Zip` y `1Password` siguen siendo búsquedas normales.
+Una operación incompleta muestra una indicación discreta; una división por cero o
+un resultado fuera de rango muestra un error sin cerrar la aplicación.
+
+El cálculo usa coma flotante y presenta hasta unas 12 cifras significativas;
+no es aritmética decimal exacta. La expresión se conserva al ocultar/reabrir igual
+que una búsqueda, únicamente en memoria.
 
 ## Desarrollo
 
@@ -102,6 +131,12 @@ Comandos de la aplicación:
 Para generar un paquete precompilado local: `./scripts/package.sh`.
 No publica ni instala dependencias del sistema.
 
+El logo de la aplicación es `assets/rodro-turbo-search-v2-rayo.svg`. La barra
+lo incluye dentro del ejecutable para funcionar también sin instalación. El
+instalador lo registra como icono SVG en el tema `hicolor` del usuario. El acceso
+del menú referencia directamente ese archivo para evitar resoluciones antiguas
+por nombre del tema.
+
 ## Arquitectura
 
 Un crate con módulos pequeños:
@@ -110,6 +145,7 @@ Un crate con módulos pequeños:
 - `platform`: instancia única, residencia y activación.
 - `catalog`: descubrimiento Linux mediante GIO.
 - `search`: coincidencias y ranking, independiente de GTK y Linux.
+- `calculator`: evaluación aritmética acotada, independiente de GTK y Linux.
 - `ui`: presentación, selección y apertura mediante GIO.
 - `scripts/setup.py`: instalación por usuario y desinstalación de la integración GNOME.
 
