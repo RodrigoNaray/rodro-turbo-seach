@@ -42,6 +42,8 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(list(self.media.get_strv('custom-keybindings')), [other, self.setup.CUSTOM_PATH])
         self.assertEqual(list(self.wm.get_strv('activate-window-menu')), ['<Control>F10'])
         self.assertTrue(self.setup.AUTOSTART.exists())
+        self.assertEqual(self.setup.ICON.read_bytes(), self.setup.LOGO_SOURCE.read_bytes())
+        self.assertIn(f'Icon={self.setup.ICON}\n', self.setup.DESKTOP.read_text())
         self.assertTrue(os.access(self.setup.BINARY, os.X_OK))
         self.media.set_strv('custom-keybindings', [other, self.setup.CUSTOM_PATH, later])
         self.setup.uninstall()
@@ -50,6 +52,7 @@ class InstallerTest(unittest.TestCase):
         self.assertFalse(self.setup.BINARY.exists())
         self.assertFalse(self.setup.STATE.exists())
         self.assertFalse(self.setup.AUTOSTART.exists())
+        self.assertFalse(self.setup.ICON.exists())
 
     def test_preserves_user_changes_to_window_menu(self):
         self.setup.install(self.binary)
@@ -79,6 +82,7 @@ class InstallerTest(unittest.TestCase):
             self.setup.install(self.binary)
         self.assertFalse(self.setup.BINARY.exists())
         self.assertFalse(self.setup.DESKTOP.exists())
+        self.assertFalse(self.setup.ICON.exists())
         self.assertFalse(self.setup.STATE.exists())
         self.assertEqual(list(self.wm.get_strv('activate-window-menu')), ['<Alt>space'])
 

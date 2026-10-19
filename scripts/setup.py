@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 """Per-user GNOME installation. No root, shell evaluation or background service."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,6 +24,8 @@ BINARY = HOME / '.local/bin/rodro-turbo-search'
 DESKTOP = DATA / 'applications' / f'{APP_ID}.desktop'
 AUTOSTART = CONFIG / 'autostart' / f'{APP_ID}.desktop'
 STATE = INSTALL / 'install-state.json'
+ICON = DATA / 'icons/hicolor/scalable/apps' / f'{APP_ID}.svg'
+LOGO_SOURCE = Path(__file__).resolve().parents[1] / 'assets/rodro-turbo-search-v2-rayo.svg'
 COMMAND = f'{shlex.quote(str(BINARY))} toggle'
 
 
@@ -52,11 +56,20 @@ def atomic_write(path, data, mode=0o644):
         temporary.unlink(missing_ok=True)
 
 
+def refresh_icon_cache():
+    updater = shutil.which('gtk-update-icon-cache')
+    theme = DATA / 'icons/hicolor'
+    if updater and theme.exists():
+        subprocess.run([updater, '--force', '--ignore-theme-index', str(theme)],
+                       check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       timeout=10)
+
+
 def desktop_entry(autostart=False):
     # Desktop Exec has its own escaping rules, distinct from shell quoting.
     executable = str(BINARY).replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$').replace('%', '%%')
     return ('[Desktop Entry]\nType=Application\nName=Rodro Turbo Search\n'
-            'Comment=Buscar y abrir aplicaciones\nIcon=system-search\n'
+            f'Comment=Buscar y abrir aplicaciones\nIcon={ICON}\n'
             f'Exec="{executable}"' + ('' if autostart else ' toggle') + '\n'
             'Terminal=false\nCategories=Utility;\nStartupNotify=true\n'
             + ('NoDisplay=true\nX-GNOME-Autostart-enabled=true\n' if autostart else ''))
@@ -84,6 +97,9 @@ def uninstall():
     for path, content in [(DESKTOP, desktop_entry()), (AUTOSTART, desktop_entry(True))]:
         if path.exists() and path.read_text() == content:
             path.unlink()
+    if ICON.exists() and hashlib.sha256(ICON.read_bytes()).hexdigest() == state.get('icon_sha256'):
+        ICON.unlink()
+        refresh_icon_cache()
     BINARY.unlink(missing_ok=True)
     (INSTALL / 'setup.py').unlink(missing_ok=True)
     STATE.unlink()
@@ -95,6 +111,8 @@ def install(source):
         raise RuntimeError('Ejecutá el instalador dentro de tu sesión GNOME.')
     if not source.is_file():
         raise RuntimeError(f'No se encontró el binario: {source}')
+    logo = LOGO_SOURCE.read_bytes()
+    logo_hash = hashlib.sha256(logo).hexdigest()
     subprocess.run([str(source), '--help'], check=True, stdout=subprocess.DEVNULL, timeout=10)
     media, wm, custom = settings()
     for obj, key in [(media, 'custom-keybindings'), (wm, 'activate-window-menu'),
@@ -110,23 +128,27 @@ def install(source):
             raise RuntimeError(f'Alt + Espacio ya pertenece a «{other.get_string("name")}». Liberá ese atajo para instalar; no se modificó.')
     first_install = not STATE.exists()
     if first_install:
-        for path in [BINARY, DESKTOP, AUTOSTART]:
+        for path in [BINARY, DESKTOP, AUTOSTART, ICON]:
             if path.exists():
                 raise RuntimeError(f'Ya existe {path} y no pertenece a una instalación registrada.')
         if CUSTOM_PATH in paths or custom.get_string('command'):
             raise RuntimeError('La ruta del atajo ya está ocupada por una configuración no registrada.')
         menu_before = list(wm.get_strv('activate-window-menu'))
-        state = {'menu_before': menu_before,
+        state = {'icon_sha256': logo_hash, 'menu_before': menu_before,
                  'menu_installed': [value for value in menu_before if not alt_space(value)]}
         atomic_write(STATE, json.dumps(state, indent=2).encode(), 0o600)
     else:
         state = json.loads(STATE.read_text())
+        if ICON.exists() and hashlib.sha256(ICON.read_bytes()).hexdigest() != state.get('icon_sha256'):
+            raise RuntimeError(f'El icono {ICON} existe y no coincide con la instalación registrada.')
         if any(alt_space(value) for value in wm.get_strv('activate-window-menu')):
             raise RuntimeError('Alt + Espacio volvió a asignarse al menú de ventana. Liberalo antes de actualizar.')
     try:
         # Stop an older development instance too: it shares the same application ID.
         subprocess.run([str(source), 'quit'], check=True, timeout=10)
         atomic_write(BINARY, source.read_bytes(), 0o755)
+        atomic_write(ICON, logo)
+        refresh_icon_cache()
         atomic_write(DESKTOP, desktop_entry().encode())
         atomic_write(AUTOSTART, desktop_entry(True).encode())
         atomic_write(INSTALL / 'setup.py', Path(__file__).read_bytes(), 0o755)
@@ -140,6 +162,8 @@ def install(source):
         Gio.Settings.sync()
         if CUSTOM_PATH not in media.get_strv('custom-keybindings') or custom.get_string('binding') != '<Alt>space':
             raise RuntimeError('GNOME no guardó el atajo.')
+        state['icon_sha256'] = logo_hash
+        atomic_write(STATE, json.dumps(state, indent=2).encode(), 0o600)
     except Exception:
         if first_install:
             uninstall()

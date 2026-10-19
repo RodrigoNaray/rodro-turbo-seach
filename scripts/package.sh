@@ -6,9 +6,10 @@ cd "$project_dir"
 if ! command -v cargo >/dev/null 2>&1; then . "$HOME/.cargo/env"; fi
 cargo build --release --locked
 bundle="dist/rodro-turbo-search-linux-$(uname -m)"
-mkdir -p "$bundle/bin" "$bundle/scripts"
+mkdir -p "$bundle/bin" "$bundle/scripts" "$bundle/assets"
 cp target/release/rodro-turbo-search "$bundle/bin/"
 cp scripts/setup.py "$bundle/scripts/"
+cp assets/rodro-turbo-search-v2-rayo.svg "$bundle/assets/"
 cp install.sh README.md DEPENDENCIES.md "$bundle/"
 tar -czf "$bundle.tar.gz" -C dist "$(basename "$bundle")"
 printf 'Paquete: %s/%s.tar.gz\n' "$project_dir" "$bundle"
