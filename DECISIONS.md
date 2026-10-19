@@ -72,3 +72,14 @@ El instalador usa Python 3 y PyGObject del sistema para acceder a GSettings de
 forma tipada. No se agregan dependencias Rust ni un gestor de paquetes propio.
 La restauración completa ante fallos está implementada para una primera instalación;
 una actualización usa reemplazos atómicos por archivo, sin transacción global.
+
+## 2026-10-19 — Apertura compacta y panel negro translúcido
+
+A pedido del usuario, una consulta vacía (incluidos espacios) no devuelve
+aplicaciones. La interfaz oculta resultados y ayuda hasta que se escribe, y limita
+la lista a cinco coincidencias. Borrar la consulta o reabrir restaura la barra sola.
+
+El fondo usa negro con alfa 0,82 y esquinas de 24 píxeles lógicos. Se aplica
+transparencia al fondo, conservando texto e iconos opacos. Los estados de selección
+son neutros para evitar el acento azul del tema. No se agrega desenfoque ni una
+dependencia del compositor.

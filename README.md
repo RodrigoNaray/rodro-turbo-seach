@@ -54,7 +54,10 @@ si sus entradas están exportadas en las rutas XDG de la sesión.
 
 La búsqueda ignora mayúsculas, admite coincidencias parciales y ordena primero
 coincidencias exactas, luego prefijos y finalmente coincidencias internas.
-Muestra hasta siete resultados con orden determinista. El lanzamiento usa GIO;
+Al abrir muestra solo la barra; al escribir aparecen hasta cinco resultados con
+orden determinista. Al borrar la consulta vuelve a quedar compacta. El panel tiene
+fondo negro al 82% de opacidad, bordes redondeados y texto opaco para mantener
+la legibilidad. El lanzamiento usa GIO;
 los errores quedan visibles y no cierran el buscador.
 
 GApplication mantiene una sola instancia por sesión, con comunicación D-Bus local.

@@ -19,11 +19,14 @@ impl SearchEntry {
 
 pub fn search(entries: &[SearchEntry], query: &str, limit: usize) -> Vec<usize> {
     let query = query.trim().to_lowercase();
+    if query.is_empty() || limit == 0 {
+        return Vec::new();
+    }
     let mut matches: Vec<_> = entries
         .iter()
         .enumerate()
         .filter_map(|(index, entry)| {
-            let rank = if query.is_empty() || entry.normalized == query {
+            let rank = if entry.normalized == query {
                 0
             } else if entry.normalized.starts_with(&query) {
                 1
@@ -64,7 +67,8 @@ mod tests {
     }
     #[test]
     fn handles_empty_missing_and_limited_results() {
-        assert_eq!(search(&entries(), "", 2), [2, 1]);
+        assert!(search(&entries(), "", 2).is_empty());
+        assert!(search(&entries(), "   ", 2).is_empty());
         assert!(search(&entries(), "absent", 7).is_empty());
         assert!(search(&entries(), "code", 0).is_empty());
         assert_eq!(search(&entries(), "fire", 7), [3]);

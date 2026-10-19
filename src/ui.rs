@@ -29,7 +29,7 @@ impl SearchWindow {
             .selection_mode(gtk::SelectionMode::Single)
             .activate_on_single_click(true)
             .build();
-        list.add_css_class("boxed-list");
+        list.add_css_class("search-results");
         let status = gtk::Label::builder().wrap(true).xalign(0.0).build();
         status.add_css_class("dim-label");
         let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
@@ -39,7 +39,7 @@ impl SearchWindow {
             WidgetExt::set_margin_start,
             WidgetExt::set_margin_end,
         ] {
-            set_margin(&content, 20);
+            set_margin(&content, 16);
         }
         content.append(&entry);
         content.append(&list);
@@ -133,7 +133,11 @@ impl View {
             self.list.remove(&child);
         }
         let catalog = self.catalog.borrow();
-        let results = search::search(&catalog.entries, &self.entry.text(), 7);
+        let query = self.entry.text();
+        let searching = !query.trim().is_empty();
+        let results = search::search(&catalog.entries, &query, 5);
+        self.list.set_visible(!results.is_empty());
+        self.status.set_visible(searching);
         for &index in &results {
             let row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
             row.add_css_class("app-result");
@@ -227,7 +231,11 @@ mod tests {
             ],
             apps: vec![success, failure],
         };
+        assert!(view.results.borrow().is_empty());
+        assert!(!view.list.get_visible());
+        assert!(!view.status.get_visible());
         view.entry.set_text("code");
+        assert!(view.list.get_visible());
         assert_eq!(*view.results.borrow(), [0, 1]);
         assert_eq!(view.list.selected_row().unwrap().index(), 0);
         view.window.present();
@@ -243,8 +251,14 @@ mod tests {
         view.move_selection(1);
         view.launch();
         assert!(view.list.selected_row().is_none());
+        view.entry.set_text("   ");
+        assert!(view.results.borrow().is_empty());
+        assert!(!view.list.get_visible());
+        assert!(!view.status.get_visible());
         window.toggle(None);
         assert!(view.entry.text().is_empty());
+        assert!(!view.list.get_visible());
+        assert!(!view.status.get_visible());
         window.toggle(None);
         assert!(!view.window.is_visible());
         view.window.close();
