@@ -1,0 +1,12 @@
+window.turbo-search {
+    border-radius: 16px;
+}
+
+.turbo-search .search-entry {
+    font-size: 22px;
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.app-result { padding: 10px 12px; }
+.turbo-search row { border-radius: 8px; }

@@ -1,0 +1,16 @@
+[package]
+name = "rodro-turbo-search"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Lanzador residente de aplicaciones para GNOME/Wayland"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.11.5" }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = "thin"
+strip = "debuginfo"
