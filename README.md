@@ -132,7 +132,10 @@ Comandos de la aplicación:
 ```
 
 Para generar un paquete precompilado local: `./scripts/package.sh`.
-No publica ni instala dependencias del sistema.
+No publica ni instala dependencias del sistema. La compilación del instalador y
+del paquete reemplaza las rutas locales del desarrollador por rutas genéricas y
+verifica que no aparezcan en el ejecutable. Para compartir binarios, usar estos
+scripts en lugar de empaquetar una compilación manual de Cargo.
 
 El logo de la aplicación es `assets/rodro-turbo-search-v2-rayo.svg`. La barra
 lo incluye dentro del ejecutable para funcionar también sin instalación. El

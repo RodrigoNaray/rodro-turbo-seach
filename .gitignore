@@ -1,3 +1,21 @@
 /target/
 __pycache__/
 /dist/
+
+# Private local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+.aws/
+.codex/
+.agents/
+.netrc
+.npmrc
+.pypirc
+.cargo/credentials*
+*.pem
+*.key
+*.p12
+*.pfx
+*.bundle
