@@ -1,21 +1,73 @@
-# Dependencias
+# Dependencies and license review
 
-Dependencia Rust directa: `gtk4` 0.11.5 (alias `gtk`), licencia MIT.
-Reexporta GIO, GLib y GDK para evitar declaraciones directas redundantes.
-Se usan las APIs base de GTK4, sin exigir una versión reciente de GNOME.
+Original project work: **GPL-3.0-only**. Copyright © 2026 Rodrigo Naray.
+See [LICENSE](LICENSE), [COPYRIGHT](COPYRIGHT), and retained full notices in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-- [gtk4-rs y licencia](https://github.com/gtk-rs/gtk4-rs)
-- [gtk-rs core y licencias](https://github.com/gtk-rs/gtk-rs-core)
-- GTK4 y GLib del sistema: LGPL-2.1-or-later; enlace dinámico.
-- Cargo.lock registra las versiones transitivas exactas. La lista de paquetes
-  y sus licencias declaradas puede regenerarse con `cargo metadata --locked
-  --format-version 1` (campos `packages[].name`, `version`, `license`).
+## Scope and compatibility
 
-No se asigna una licencia open source al código de este proyecto.
+The only direct Cargo dependency is `gtk4` 0.11.5 (alias `gtk`, MIT). It reexports
+GIO/GLib/GDK. The locked graph has **64 third-party packages**, including build-only
+and target-specific packages. No vendored third-party application code was found
+in `src/`; there are no Git submodules or bundled font binaries.
 
-## Inventario de Cargo.lock
+The resolved declarations are MIT, MIT/Apache-2.0 alternatives, Unlicense/MIT,
+Apache-2.0 WITH LLVM-exception, and `(MIT OR Apache-2.0) AND Unicode-3.0`.
+MIT is selected where offered. The Apache-2.0 and Unicode terms are compatible
+with GPLv3; their notices are retained. The LLVM exception adds permissions, and
+its full text is retained with target-lexicon. No incompatible Rust dependency
+was identified in this locked graph. This is a review of declared licenses and
+shipped notice files, not an exhaustive provenance audit of every upstream line.
 
-| Paquete | Versión | Licencia declarada |
+Primary references:
+
+- [GNU license compatibility list](https://www.gnu.org/licenses/license-list.html)
+- [gtk4-rs license](https://github.com/gtk-rs/gtk4-rs/blob/main/LICENSE)
+- [GTK licensing](https://www.gtk.org/)
+- [DejaVu license](https://dejavu-fonts.github.io/License.html)
+
+GTK/GLib and other native libraries are linked dynamically and supplied by the
+system. GTK/GLib use LGPL terms (primarily LGPL-2.1-or-later); Cairo, Pango,
+GdkPixbuf, Graphene and their dependencies retain their own licenses. The local
+binary's dynamic dependencies can be inspected with `ldd`. No system shared
+libraries are bundled by `scripts/package.sh`. Python and PyGObject are installed
+system tools, not copied into the archive. PyGObject uses LGPL terms. Distributing
+native libraries yourself would require a separate inventory of those exact builds.
+
+## Artwork and attribution
+
+`assets/rodro-turbo-search-v2-rayo.svg` is the embedded and installed logo. It
+contains a DejaVu Serif glyph converted to paths, with font-family metadata still
+present. Preserve the DejaVu/Bitstream notices included in THIRD_PARTY_NOTICES.md.
+Do not interpret the project's GPL notice as replacing the font's license. Font
+output/artwork and font software are distinct; no font program is embedded.
+The maintainer should confirm ownership or permission for the rest of the original
+artwork before publication. No external image/font payload was found in the SVG.
+An untracked alternative logo is not part of the committed source or package.
+Desktop application icons come from GIO/the user's icon theme; they are not copied
+into the repository.
+
+## Distribution checklist
+
+The packaging script includes LICENSE, COPYRIGHT, this inventory, both READMEs,
+and third-party notices. They are additional to the executable, not a claim that
+the binary archive alone satisfies all GPL distribution obligations.
+
+When distributing object code, provide complete corresponding source for the
+exact build, including linked Rust dependencies and build/install scripts, through
+a GPLv3-permitted method. One practical preparation is to archive the matching
+project source plus `cargo vendor --locked` output and its Cargo configuration,
+check an offline rebuild, and offer both source and binary together. System
+libraries are generally outside Corresponding Source under GPLv3's System Library
+exception; evaluate any libraries actually bundled separately. This repository
+preparation does not publish a binary or set up a source offer.
+
+## Locked dependency inventory
+
+Regenerate from `cargo metadata --locked --format-version 1` after changing the
+lockfile. Notice text was checked against the locally downloaded crate packages.
+
+| Package | Version | Declared SPDX license |
 | --- | --- | --- |
 | autocfg | 1.5.1 | Apache-2.0 OR MIT |
 | bitflags | 2.13.2 | MIT OR Apache-2.0 |
@@ -82,8 +134,11 @@ No se asigna una licencia open source al código de este proyecto.
 | windows-sys | 0.61.2 | MIT OR Apache-2.0 |
 | winnow | 1.0.4 | MIT |
 
-## Instalación y empaquetado
+## GPL text integrity
 
-El instalador usa Python 3 (PSF-2.0) y PyGObject del sistema (LGPL-2.1-or-later)
-para GSettings. Los scripts de empaquetado usan herramientas habituales de Linux:
-shell POSIX, tar y Cargo. No se descargan dependencias Python ni se usa pip.
+LICENSE was downloaded verbatim from https://www.gnu.org/licenses/gpl-3.0.txt
+and matches the system's `/usr/share/common-licenses/GPL-3` byte for byte.
+SHA-256: `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`. The author notice is in COPYRIGHT, not inserted into
+the official license document. GPL-3.0-only is selected in Cargo.toml and COPYRIGHT;
+the license's generic example about “later versions” is part of the unmodified
+license text and does not change that selection.

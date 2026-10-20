@@ -3,6 +3,8 @@ name = "rodro-turbo-search"
 version = "0.1.0"
 edition = "2024"
 publish = false
+license = "GPL-3.0-only"
+authors = ["Rodrigo Naray"]
 description = "Lanzador residente de aplicaciones para GNOME/Wayland"
 
 [dependencies]

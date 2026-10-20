@@ -1,0 +1,14 @@
+Copyright © 2026 Rodrigo Naray
+
+Rodro Turbo Search: original source code, scripts, documentation, and original
+artwork are licensed under the GNU General Public License, version 3 only
+(SPDX-License-Identifier: GPL-3.0-only). Later versions are not automatically
+permitted. The full, unmodified license text is in LICENSE.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See LICENSE for the full terms.
+
+Third-party components and font-derived artwork retain their original copyright
+and license notices. See DEPENDENCIES.md and THIRD_PARTY_NOTICES.md. This notice
+does not replace or relicense those components.
