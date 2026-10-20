@@ -1,7 +1,8 @@
 """Run manually inside a graphical session; briefly shows the prototype window.
 
 Checks IPC/lifecycle only, not compositor focus or visual correctness.
-Usage: python3 tests/session_smoke.py [path/to/binary]
+Run without arguments to use target/debug/rodro-turbo-search. An optional binary
+path may be passed as the first argument.
 """
 
 import os

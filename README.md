@@ -188,7 +188,8 @@ Create a local prebuilt archive for the current Linux architecture with:
 ./scripts/package.sh
 ```
 
-It writes `dist/rodro-turbo-search-linux-<architecture>.tar.gz`, without publishing
+It writes a `dist/rodro-turbo-search-linux-*.tar.gz` archive whose filename includes
+the build host architecture; the script prints the exact path. It does not publish
 anything. Extract and run its `./install.sh` to install without Rust. No prebuilt
 release availability is promised. Use the release scripts for shared binaries:
 they remap local build paths and reject binaries containing the builder's paths.

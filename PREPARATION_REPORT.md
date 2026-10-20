@@ -1,7 +1,7 @@
 # Informe de preparación para publicación
 
-Revisión local realizada el 20 de octubre de 2026 sobre la base del commit
-`895ec87`, con los cambios de preparación todavía sin commit. No se cambió la
+Revisión local realizada el 20 de octubre de 2026. Los cambios de preparación
+quedaron registrados en el commit `8a99ece`, basado en `895ec87`. No se cambió la
 visibilidad, el nombre del remoto, el código funcional del MVP ni su arquitectura.
 No se ejecutó push, no se publicó una release y no se reescribió ni purgó historial.
 
@@ -51,9 +51,8 @@ Las bibliotecas nativas permanecen enlazadas dinámicamente y no se incluyen en 
 paquete. La revisión de metadatos/avisos no equivale a una auditoría completa del
 código upstream. El SVG contiene un glifo de DejaVu Serif convertido a contornos:
 se conservaron sus términos de fuente; no se lo relicenció como software GPL.
-Antes de publicar, el autor debe confirmar derechos sobre la composición original
-del logo y cualquier otro material original. No se encontró un payload externo de
-imagen ni un binario de fuente en el SVG.
+El autor confirmó que creó el arte original del logo. No se encontró un payload
+externo de imagen ni un binario de fuente en el SVG.
 
 Para futuras releases binarias debe proporcionarse el código fuente correspondiente
 completo del build exacto, incluidas dependencias Rust enlazadas y scripts. El tar.gz
@@ -124,10 +123,12 @@ Las muestras diagnósticas de memoria/CPU del smoke test no se publican como ben
 
 Consultar PUBLICATION.md para la descripción y los topics propuestos.
 
-Pendientes: revisar/confirmar autoría, decidir sobre el SVG alternativo, revisar y
-hacer commit de esta preparación, comprobar Issues/canal privado de vulnerabilidades,
-y después decidir la publicación manual. No es necesario publicar binarios para
-presentar el repositorio como proyecto open source.
+La autoría del logo quedó confirmada y la preparación ya está en el commit
+`8a99ece`. El SVG alternativo sigue excluido del repositorio; no hace falta decidir
+sobre él para publicar la versión que usa `v2-rayo`. Antes de cambiar la visibilidad,
+el propietario todavía puede revisar los ajustes de Issues y del canal privado de
+vulnerabilidades en GitHub y decidir cuándo publicar manualmente. No es necesario
+publicar binarios para presentar el repositorio como proyecto open source.
 
 Opcionales, sin implementar: capturas reales de ambos modos y calculadora,
 demostración breve, imagen social, CI y mediciones reproducibles de consumo.

@@ -193,7 +193,9 @@ Para crear un paquete precompilado local de la arquitectura Linux actual:
 ./scripts/package.sh
 ```
 
-Genera `dist/rodro-turbo-search-linux-<arquitectura>.tar.gz` sin publicar nada.
+Genera un archivo `dist/rodro-turbo-search-linux-*.tar.gz`; el nombre incluye la
+arquitectura del equipo donde se compila y el script muestra la ruta exacta. No
+publica nada.
 Extraelo y ejecutá su `./install.sh` para instalar sin Rust. No se promete la
 existencia de releases precompiladas. Para compartir binarios, usá los scripts de
 release: reemplazan las rutas locales de compilación y rechazan ejecutables que
