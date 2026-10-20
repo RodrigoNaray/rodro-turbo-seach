@@ -153,7 +153,9 @@ ventana si el usuario no lo modificó después.
   Un disco lento puede demorar el hilo más allá del presupuesto, aunque el
   recorrido se realiza fuera del hilo GTK.
 - Las aplicaciones preceden a los archivos. Las consultas que parecen cálculos
-  tienen prioridad sobre ambas búsquedas. Los archivos usan el manejador predeterminado.
+  tienen prioridad sobre ambas búsquedas. Al activar un archivo se muestra en el
+  gestor de archivos del sistema. Si el gestor no permite seleccionar elementos
+  mediante D-Bus, se abre la carpeta contenedora con su manejador predeterminado.
 - La aritmética usa coma flotante y unas 12 cifras significativas al presentar el
   resultado; no es aritmética decimal exacta. No hay separadores de miles.
 - No hay interfaz de configuración, historial guardado ni persistencia del modo
@@ -175,6 +177,13 @@ La prueba gráfica opcional abre brevemente una ventana y ejecuta `/usr/bin/true
 
 ```sh
 GDK_BACKEND=wayland cargo test --locked ui::tests::search_selection_launch_and_failure -- --ignored --test-threads=1
+```
+
+La prueba de integración con el gestor usa un servicio simulado en una sesión
+D-Bus aislada; no abre un explorador real:
+
+```sh
+dbus-run-session -- env TURBO_SEARCH_ISOLATED_BUS=1 GIO_USE_VFS=local cargo test --locked platform::tests::reveals_file_via_file_manager -- --ignored --test-threads=1
 ```
 
 Dentro de una sesión gráfica, sin una instancia residente existente, la prueba

@@ -148,7 +148,9 @@ subsequently been changed by the user.
   matches; unreadable directories are skipped. Slow filesystems can delay the
   worker beyond this budget, though disk traversal is off the GTK thread.
 - Application matches precede file matches. Calculation-like queries take
-  precedence over application/file search. Files open via the default handler.
+  precedence over application/file search. Activating a file result reveals it
+  in the system file manager. If the manager does not support item selection via
+  D-Bus, the default folder handler opens its containing directory instead.
 - Arithmetic uses floating point and about 12 significant display digits; it
   is not exact decimal arithmetic. There are no thousands separators.
 - There is no settings interface, saved query history, or persistence of the
@@ -170,6 +172,13 @@ The opt-in GUI test briefly opens a test window and launches `/usr/bin/true`:
 
 ```sh
 GDK_BACKEND=wayland cargo test --locked ui::tests::search_selection_launch_and_failure -- --ignored --test-threads=1
+```
+
+The file-manager integration test uses a mock service on an isolated D-Bus session;
+it does not open a real file manager:
+
+```sh
+dbus-run-session -- env TURBO_SEARCH_ISOLATED_BUS=1 GIO_USE_VFS=local cargo test --locked platform::tests::reveals_file_via_file_manager -- --ignored --test-threads=1
 ```
 
 Inside a graphical session, with no existing resident instance, the lifecycle

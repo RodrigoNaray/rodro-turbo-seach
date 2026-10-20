@@ -388,7 +388,7 @@ impl View {
         self.entry.grab_focus();
     }
 
-    fn activate_selected(&self) {
+    fn activate_selected(self: &Rc<Self>) {
         // Clearing the entry synchronously renders again; release state borrows first.
         let calculation = self.calculation.borrow().clone();
         if let Some(value) = calculation {
@@ -410,14 +410,24 @@ impl View {
                 .get(position - app_count)
                 .cloned();
             if let Some(path) = path {
-                let file = gtk::gio::File::for_path(path);
                 let context = WidgetExt::display(&self.window).app_launch_context();
-                match gtk::gio::AppInfo::launch_default_for_uri(&file.uri(), Some(&context)) {
-                    Ok(()) => self.hide_and_clear(),
-                    Err(error) => self
-                        .status
-                        .set_text(&format!("No se pudo abrir el archivo: {error}")),
-                }
+                let view = Rc::downgrade(self);
+                let query = self.entry.text();
+                glib::spawn_future_local(async move {
+                    let result = crate::platform::show_in_folder(&path, &context).await;
+                    if let Some(view) = view.upgrade() {
+                        // Do not clear a new query entered while opening the folder.
+                        if view.entry.text() != query {
+                            return;
+                        }
+                        match result {
+                            Ok(()) => view.hide_and_clear(),
+                            Err(error) => view
+                                .status
+                                .set_text(&format!("No se pudo mostrar en la carpeta: {error}")),
+                        }
+                    }
+                });
             }
             return;
         }
