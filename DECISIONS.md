@@ -114,3 +114,11 @@ Se usa f64 con presentación de 12 cifras significativas para reducir artefactos
 visuales habituales. Se detectan divisiones por cero y resultados no finitos.
 El porcentaje es un operador posfijo que divide por 100. No se agrega historial
 ni persistencia, y el portapapeles se modifica solo al activar el resultado.
+
+## 2026-10-20 — Limpiar después de activar un resultado
+
+Al abrir correctamente una aplicación o copiar un cálculo con Enter o clic, se
+oculta la barra y se vacía la consulta. Escape y la pérdida de foco conservan el
+trabajo pendiente. Un fallo de lanzamiento conserva la consulta y muestra el error.
+Antes de limpiar se liberan los préstamos de estado: el cambio de texto vuelve
+a renderizar la interfaz de forma síncrona.

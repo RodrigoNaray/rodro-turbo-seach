@@ -265,26 +265,35 @@ impl View {
     }
 
     fn activate_selected(&self) {
-        if let Some(value) = self.calculation.borrow().as_ref() {
-            WidgetExt::display(&self.window).clipboard().set_text(value);
-            self.window.set_visible(false);
+        // Clearing the entry synchronously renders again; release state borrows first.
+        let calculation = self.calculation.borrow().clone();
+        if let Some(value) = calculation {
+            WidgetExt::display(&self.window)
+                .clipboard()
+                .set_text(&value);
+            self.hide_and_clear();
             return;
         }
         let Some(row) = self.list.selected_row() else {
             return;
         };
-        let results = self.results.borrow();
-        let Some(&index) = results.get(row.index() as usize) else {
+        let index = self.results.borrow().get(row.index() as usize).copied();
+        let Some(index) = index else {
             return;
         };
-        let catalog = self.catalog.borrow();
         let context = WidgetExt::display(&self.window).app_launch_context();
-        match catalog.apps[index].launch(&[], Some(&context)) {
-            Ok(()) => self.window.set_visible(false),
+        let outcome = self.catalog.borrow().apps[index].launch(&[], Some(&context));
+        match outcome {
+            Ok(()) => self.hide_and_clear(),
             Err(error) => self
                 .status
                 .set_text(&format!("No se pudo abrir la aplicación: {error}")),
         }
+    }
+
+    fn hide_and_clear(&self) {
+        self.window.set_visible(false);
+        self.entry.set_text("");
     }
 }
 
@@ -351,6 +360,9 @@ mod tests {
         view.move_selection(-1);
         view.activate_selected();
         assert!(!view.window.is_visible());
+        assert!(view.entry.text().is_empty());
+        assert!(view.results.borrow().is_empty());
+        assert!(!view.list.get_visible());
         view.entry.set_text("no matching application");
         assert!(view.results.borrow().is_empty());
         view.move_selection(1);

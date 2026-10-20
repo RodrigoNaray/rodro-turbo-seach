@@ -4,6 +4,8 @@ Lanzador de aplicaciones para **GNOME sobre Wayland**, escrito en Rust y GTK4.
 Alt + Espacio abre la búsqueda; escribí un nombre, seleccioná con ↑/↓ y pulsá
 Enter. Escape o hacer clic fuera ocultan la ventana. Al volver con Alt + Espacio
 se conserva la consulta, el cursor y la aplicación seleccionada (si sigue disponible).
+Después de abrir una aplicación o copiar un cálculo, la barra se limpia para la
+siguiente búsqueda. Si falla la apertura, conserva la consulta para poder reintentar.
 La consulta se mantiene solo mientras el proceso está abierto, sin guardarla en disco.
 También podés abrir resultados con un clic.
 
@@ -71,7 +73,8 @@ No usa red, telemetría, base de datos, historial ni búsqueda de archivos.
 
 Escribí una operación en la misma barra y el resultado aparece inmediatamente.
 **Enter** o un clic en el resultado lo copia al portapapeles y oculta la barra.
-No se copia nada mientras escribís. Alt + Espacio permite volver a la misma operación.
+No se copia nada mientras escribís. Al copiar, la consulta se limpia; la próxima
+apertura con Alt + Espacio muestra la barra vacía.
 
 | Expresión | Resultado |
 | --- | --- |
