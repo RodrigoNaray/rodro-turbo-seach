@@ -7,7 +7,14 @@ se conserva la consulta, el cursor y la aplicación seleccionada (si sigue dispo
 Después de abrir una aplicación o copiar un cálculo, la barra se limpia para la
 siguiente búsqueda. Si falla la apertura, conserva la consulta para poder reintentar.
 La consulta se mantiene solo mientras el proceso está abierto, sin guardarla en disco.
-También podés abrir resultados con un clic.
+También podés abrir resultados con un clic. La barra vacía no muestra texto de
+ayuda en ninguno de los modos. Para moverla, hacé clic y arrastrá desde cualquier
+parte de la interfaz, incluso el campo de texto o los resultados. La única
+excepción es el logo: cambia de modo y se ilumina al pasar el mouse. Los clics
+sin arrastre siguen enfocando el campo y abriendo resultados; arrastrar el texto
+mueve la ventana (para seleccionarlo podés usar el teclado). La barra permanece
+abierta durante la interacción y el arrastre, aunque el compositor cambie el foco
+transitoriamente; al hacer clic afuera vuelve a ocultarse.
 
 ## Instalar y usar
 
@@ -67,7 +74,32 @@ la legibilidad. El lanzamiento usa GIO;
 los errores quedan visibles y no cierran el buscador.
 
 GApplication mantiene una sola instancia por sesión, con comunicación D-Bus local.
-No usa red, telemetría, base de datos, historial ni búsqueda de archivos.
+No usa red, telemetría, base de datos ni historial.
+
+## Archivos y modo violeta
+
+Hacé clic en el logo de la barra para incluir archivos y carpetas de tu carpeta
+personal. El fondo se llena de violeta translúcido; otro clic vuelve al negro y
+busca solo aplicaciones. También podés enfocar el botón con Tab y activarlo con
+Espacio. La animación dura 280 ms, admite invertirla con otro clic y respeta la
+preferencia de GNOME de desactivar animaciones. No se anima cuando está en reposo.
+
+Con al menos dos caracteres aparecen hasta cinco archivos debajo de las aplicaciones.
+Se busca por nombre, sin distinguir mayúsculas, y se muestra la ruta para distinguir
+nombres repetidos. Enter o clic abre el resultado con la aplicación predeterminada
+mediante GIO y limpia la barra. La calculadora sigue funcionando en ambos modos.
+El modo elegido se conserva durante la sesión del proceso.
+
+Para mantener el consumo bajo, hay una espera de 200 ms después de escribir y un
+único hilo de búsqueda, sin índice ni vigilancia del disco. Cambiar la consulta,
+desactivar el modo u ocultar la ventana cancela el recorrido. No se leen contenidos,
+no se siguen enlaces simbólicos y se omiten nombres ocultos, `node_modules`, `target`
+y `vendor`. Esta versión busca dentro de tu carpeta personal, no en todo `/`.
+El recorrido se limita a 30.000 entradas, 16 niveles, 2.048 carpetas pendientes y
+700 ms entre operaciones de disco; si alcanza un límite, indica que los resultados
+son parciales. Un disco o montaje lento puede demorar una operación del sistema,
+pero nunca bloquea el hilo de la interfaz. No hay garantías de búsqueda exhaustiva
+para árboles grandes; los resultados se ordenan entre los archivos recorridos.
 
 ## Calculadora
 
@@ -152,6 +184,8 @@ Un crate con módulos pequeños:
 - `catalog`: descubrimiento Linux mediante GIO.
 - `search`: coincidencias y ranking, independiente de GTK y Linux.
 - `calculator`: evaluación aritmética acotada, independiente de GTK y Linux.
+- `files`: búsqueda de nombres en un hilo, cancelable y con recorrido acotado.
+- `background`: transición de color dibujada solo mientras se anima.
 - `ui`: presentación, selección y apertura mediante GIO.
 - `scripts/setup.py`: instalación por usuario y desinstalación de la integración GNOME.
 
@@ -176,7 +210,8 @@ inicio, después de varios minutos, visible y tras abrir/cerrar 20 veces.
 `time ... toggle` mide comando/IPC, no tiempo hasta el primer frame. Las muestras
 de fase 0 no representan el consumo de esta nueva versión con catálogo.
 
-Validación de esta entrega: formato y Clippy correctos; cinco pruebas de comandos
- y búsqueda, cuatro pruebas del instalador y una prueba de interfaz en Wayland
-correctas. Esta última verifica resultados, selección, apertura de un proceso de
-prueba, error de lanzamiento, ausencia de resultados y conservación de consulta y selección al actualizar el catálogo.
+Validación de esta entrega: formato y Clippy correctos; doce pruebas unitarias y
+la prueba de interfaz en Wayland correctas. Cubren cálculo, comandos, ranking,
+búsqueda de archivos, exclusiones, cancelación y reemplazo de consultas. La prueba
+de interfaz verifica selección, apertura y error de lanzamiento, conservación de
+consulta, limpieza al activar y cancelación al cambiar de modo u ocultar la barra.

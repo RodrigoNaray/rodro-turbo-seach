@@ -1,5 +1,5 @@
 //! Widgets and keyboard interaction; search and discovery live in separate modules.
-use crate::{calculator, catalog::Catalog, search};
+use crate::{background::Background, calculator, catalog::Catalog, files::FileSearch, search};
 use gtk::{gdk, glib, prelude::*};
 use std::{
     cell::{Cell, RefCell},
@@ -18,19 +18,30 @@ struct View {
     calculation: RefCell<Option<String>>,
     catalog: RefCell<Catalog>,
     results: RefCell<Vec<usize>>,
+    file_results: RefCell<Vec<std::path::PathBuf>>,
+    files_enabled: Cell<bool>,
+    file_search: FileSearch,
+    file_timer: RefCell<Option<glib::SourceId>>,
+    background: Background,
+    mode_button: gtk::ToggleButton,
 }
 
 impl SearchWindow {
     pub fn new(app: &gtk::Application) -> Self {
-        let entry = gtk::Entry::builder()
-            .placeholder_text("Buscar aplicaciones o calcular…")
-            .hexpand(true)
-            .build();
+        let entry = gtk::Entry::builder().hexpand(true).build();
         // Embed the SVG so the search bar also works before installation.
         let logo = gtk::gio::BytesIcon::new(&glib::Bytes::from_static(include_bytes!(
             "../assets/rodro-turbo-search-v2-rayo.svg"
         )));
-        entry.set_icon_from_gicon(gtk::EntryIconPosition::Primary, Some(&logo));
+        let mode_button = gtk::ToggleButton::builder()
+            .child(&gtk::Image::from_gicon(&logo))
+            .tooltip_text("Incluir archivos de tu carpeta personal")
+            .build();
+        mode_button.add_css_class("mode-button");
+        mode_button.set_cursor_from_name(Some("pointer"));
+        let search_bar = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        search_bar.append(&mode_button);
+        search_bar.append(&entry);
         entry.add_css_class("search-entry");
         let list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::Single)
@@ -65,10 +76,15 @@ impl SearchWindow {
         ] {
             set_margin(&content, 16);
         }
-        content.append(&entry);
+        content.append(&search_bar);
         content.append(&calculator);
         content.append(&list);
         content.append(&status);
+        let background = Background::new();
+        let overlay = gtk::Overlay::new();
+        overlay.set_child(Some(&background.widget));
+        overlay.add_overlay(&content);
+        overlay.set_measure_overlay(&content, true);
         let window = gtk::ApplicationWindow::builder()
             .application(app)
             .title("Rodro Turbo Search")
@@ -77,17 +93,12 @@ impl SearchWindow {
             .resizable(false)
             .decorated(false)
             .hide_on_close(true)
-            .child(&content)
+            .child(&overlay)
             .build();
         window.add_css_class("turbo-search");
-        // Wait for actual activation before dismissing: mapping on Wayland is asynchronous.
-        let was_active = Cell::new(false);
-        window.connect_is_active_notify(move |window| {
-            let active = window.is_active();
-            if was_active.replace(active) && !active {
-                window.set_visible(false);
-            }
-        });
+        let interaction = Rc::new(crate::dismissal::Interaction::default());
+        crate::window_drag::install(&window, &mode_button, interaction.clone());
+        crate::dismissal::install(&window, interaction);
         let css = gtk::CssProvider::new();
         css.load_from_data(include_str!("style.css"));
         gtk::style_context_add_provider_for_display(
@@ -106,6 +117,35 @@ impl SearchWindow {
             calculation: RefCell::new(None),
             catalog: RefCell::new(Catalog::discover()),
             results: RefCell::new(Vec::new()),
+            file_results: RefCell::new(Vec::new()),
+            files_enabled: Cell::new(false),
+            file_search: FileSearch::new(),
+            file_timer: RefCell::new(None),
+            background,
+            mode_button,
+        });
+        let weak = Rc::downgrade(&view);
+        view.window.connect_visible_notify(move |window| {
+            if !window.is_visible()
+                && let Some(view) = weak.upgrade()
+            {
+                view.cancel_files();
+            }
+        });
+        let weak = Rc::downgrade(&view);
+        view.mode_button.connect_toggled(move |button| {
+            if let Some(view) = weak.upgrade() {
+                let enabled = button.is_active();
+                view.files_enabled.set(enabled);
+                view.background.set_enabled(enabled);
+                button.set_tooltip_text(Some(if enabled {
+                    "Volver a buscar solo aplicaciones"
+                } else {
+                    "Incluir archivos de tu carpeta personal"
+                }));
+                view.render();
+                view.entry.grab_focus_without_selecting();
+            }
         });
         let weak = Rc::downgrade(&view);
         view.entry.connect_changed(move |_| {
@@ -169,7 +209,7 @@ impl SearchWindow {
 }
 
 impl View {
-    fn refresh_catalog(&self, catalog: Catalog) {
+    fn refresh_catalog(self: &Rc<Self>, catalog: Catalog) {
         // Preserve identity, not the old index: installations can reorder the catalog.
         let selected_id = self.list.selected_row().and_then(|row| {
             self.results
@@ -193,7 +233,9 @@ impl View {
         }
     }
 
-    fn render(&self) {
+    fn render(self: &Rc<Self>) {
+        self.cancel_files();
+        self.file_results.borrow_mut().clear();
         while let Some(child) = self.list.first_child() {
             self.list.remove(&child);
         }
@@ -251,10 +293,92 @@ impl View {
         });
         *self.results.borrow_mut() = results;
         self.list.select_row(self.list.row_at_index(0).as_ref());
+        if self.files_enabled.get() && searching {
+            if query.trim().chars().count() < 2 {
+                self.status
+                    .set_text("Escribí al menos 2 caracteres para buscar archivos");
+            } else {
+                self.schedule_files(query.to_string());
+            }
+        }
+    }
+
+    fn cancel_files(&self) {
+        if let Some(timer) = self.file_timer.borrow_mut().take() {
+            timer.remove();
+        }
+        self.file_search.cancel();
+    }
+
+    fn schedule_files(self: &Rc<Self>, query: String) {
+        self.status
+            .set_text("Buscando archivos en tu carpeta personal…");
+        let weak = Rc::downgrade(self);
+        let timer =
+            glib::timeout_add_local_once(std::time::Duration::from_millis(200), move || {
+                let Some(view) = weak.upgrade() else {
+                    return;
+                };
+                view.file_timer.borrow_mut().take();
+                let generation = view.file_search.request(glib::home_dir(), query);
+                let weak = Rc::downgrade(&view);
+                let timer =
+                    glib::timeout_add_local(std::time::Duration::from_millis(40), move || {
+                        let Some(view) = weak.upgrade() else {
+                            return glib::ControlFlow::Break;
+                        };
+                        let Some(matches) = view.file_search.take(generation) else {
+                            return glib::ControlFlow::Continue;
+                        };
+                        view.file_timer.borrow_mut().take();
+                        for path in &matches.paths {
+                            let row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+                            row.add_css_class("app-result");
+                            row.append(&gtk::Image::from_icon_name("text-x-generic-symbolic"));
+                            let labels = gtk::Box::new(gtk::Orientation::Vertical, 2);
+                            let name = path.file_name().unwrap_or_default().to_string_lossy();
+                            let title = gtk::Label::builder()
+                                .label(name.as_ref())
+                                .xalign(0.0)
+                                .ellipsize(gtk::pango::EllipsizeMode::End)
+                                .hexpand(true)
+                                .build();
+                            let location = path.strip_prefix(glib::home_dir()).unwrap_or(path);
+                            let subtitle = gtk::Label::builder()
+                                .label(format!("~/{}", location.display()))
+                                .xalign(0.0)
+                                .ellipsize(gtk::pango::EllipsizeMode::Middle)
+                                .build();
+                            subtitle.add_css_class("file-path");
+                            labels.append(&title);
+                            labels.append(&subtitle);
+                            row.append(&labels);
+                            row.set_tooltip_text(Some(&path.to_string_lossy()));
+                            view.list.append(&row);
+                        }
+                        *view.file_results.borrow_mut() = matches.paths;
+                        let any = !view.results.borrow().is_empty()
+                            || !view.file_results.borrow().is_empty();
+                        view.list.set_visible(any);
+                        if view.list.selected_row().is_none() {
+                            view.list.select_row(view.list.row_at_index(0).as_ref());
+                        }
+                        view.status.set_text(if matches.limited {
+                            "Búsqueda parcial: se alcanzó el límite de recorrido"
+                        } else if any {
+                            "↑ ↓ Seleccionar   ·   Enter Abrir   ·   Escape Cerrar"
+                        } else {
+                            "No se encontraron aplicaciones ni archivos"
+                        });
+                        glib::ControlFlow::Break
+                    });
+                *view.file_timer.borrow_mut() = Some(timer);
+            });
+        *self.file_timer.borrow_mut() = Some(timer);
     }
 
     fn move_selection(&self, delta: i32) {
-        let count = self.results.borrow().len() as i32;
+        let count = (self.results.borrow().len() + self.file_results.borrow().len()) as i32;
         if count == 0 {
             return;
         }
@@ -277,7 +401,27 @@ impl View {
         let Some(row) = self.list.selected_row() else {
             return;
         };
-        let index = self.results.borrow().get(row.index() as usize).copied();
+        let position = row.index() as usize;
+        let app_count = self.results.borrow().len();
+        if position >= app_count {
+            let path = self
+                .file_results
+                .borrow()
+                .get(position - app_count)
+                .cloned();
+            if let Some(path) = path {
+                let file = gtk::gio::File::for_path(path);
+                let context = WidgetExt::display(&self.window).app_launch_context();
+                match gtk::gio::AppInfo::launch_default_for_uri(&file.uri(), Some(&context)) {
+                    Ok(()) => self.hide_and_clear(),
+                    Err(error) => self
+                        .status
+                        .set_text(&format!("No se pudo abrir el archivo: {error}")),
+                }
+            }
+            return;
+        }
+        let index = self.results.borrow().get(position).copied();
         let Some(index) = index else {
             return;
         };
@@ -394,6 +538,25 @@ mod tests {
         assert!(!view.status.get_visible());
         window.toggle(None);
         assert!(!view.window.is_visible());
+        // The logo switches modes without losing text; disabling/hiding cancels work.
+        view.entry.set_text("code");
+        view.mode_button.set_active(true);
+        assert!(view.files_enabled.get());
+        assert!(view.file_timer.borrow().is_some());
+        assert_eq!(view.entry.text(), "code");
+        view.mode_button.set_active(false);
+        assert!(!view.files_enabled.get());
+        assert!(view.file_timer.borrow().is_none());
+        assert!(view.file_results.borrow().is_empty());
+        view.mode_button.set_active(true);
+        view.window.set_visible(true);
+        view.window.set_visible(false);
+        assert!(view.file_timer.borrow().is_none());
+        view.entry.set_text("a");
+        assert!(view.file_timer.borrow().is_none());
+        view.entry.set_text("");
+        assert!(!view.list.get_visible());
+        assert!(!view.status.get_visible());
         view.window.close();
     }
 }

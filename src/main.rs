@@ -1,9 +1,13 @@
+mod background;
 mod calculator;
 mod catalog;
 mod cli;
+mod dismissal;
+mod files;
 mod platform;
 mod search;
 mod ui;
+mod window_drag;
 
 fn main() -> std::process::ExitCode {
     let command = match cli::Command::parse(std::env::args_os().skip(1)) {

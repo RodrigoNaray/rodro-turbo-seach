@@ -122,3 +122,32 @@ oculta la barra y se vacía la consulta. Escape y la pérdida de foco conservan 
 trabajo pendiente. Un fallo de lanzamiento conserva la consulta y muestra el error.
 Antes de limpiar se liberan los préstamos de estado: el cambio de texto vuelve
 a renderizar la interfaz de forma síncrona.
+
+
+## Modo de archivos opcional
+
+El logo es un ToggleButton accesible por teclado. Activarlo suma resultados de
+archivos al catálogo de aplicaciones y cambia el fondo mediante un DrawingArea
+con un barrido de color recortado a los bordes redondeados. El callback de frames
+se retira al finalizar la transición; se respeta gtk-enable-animations.
+
+La búsqueda de nombres usa solo std: un worker y un buzón de última consulta,
+con generación atómica para cancelar resultados obsoletos. Se espera 200 ms antes
+de solicitar trabajo. La UI consulta respuestas solo mientras hay una solicitud;
+al ocultarse cancela el trabajo y el temporizador. No se agrega una dependencia,
+base de datos, indexador ni vigilancia permanente. El alcance inicial es HOME,
+con exclusiones de ocultos/builds, sin symlinks y con límites explícitos de tiempo,
+entradas, profundidad y carpetas pendientes. Los límites pueden producir resultados
+parciales, que se indican en la interfaz. Las operaciones de disco no son
+interrumpibles, por eso se ejecutan fuera del hilo GTK.
+
+
+## Foco durante el arrastre
+
+El ocultamiento por pérdida de foco se evalúa al terminar el procesamiento de
+los eventos GTK. Se comparte el estado de pulsación y movimiento con el manejo
+de arrastre: una interacción interna o un movimiento nativo no ocultan la barra.
+El puntero dentro de la interfaz también evita interpretar una pérdida transitoria
+como un clic externo. Al volver el foco o recibir eventos sin botón presionado,
+se limpia el estado de movimiento, porque Wayland puede consumir la liberación.
+La comprobación usa eventos e idle de una sola ejecución, sin sondeo permanente.

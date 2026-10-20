@@ -1,6 +1,6 @@
 /* Only the background is translucent; text and icons remain fully opaque. */
 window.turbo-search {
-    background-color: rgba(0, 0, 0, 0.82);
+    background-color: transparent;
     background-image: none;
     color: #f5f5f5;
     border: 1px solid rgba(255, 255, 255, 0.16);
@@ -90,3 +90,23 @@ window.turbo-search {
     font-size: 28px;
     font-weight: 600;
 }
+
+.turbo-search .mode-button {
+    background: transparent;
+    border: 1px solid transparent;
+    box-shadow: none;
+    border-radius: 16px;
+    padding: 8px;
+    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.turbo-search .mode-button:hover,
+.turbo-search .mode-button:focus-visible {
+    background-color: rgba(255, 255, 255, 0.22);
+    border-color: rgba(218, 184, 255, 0.8);
+    box-shadow: 0 0 8px rgba(155, 88, 245, 0.45);
+}
+.turbo-search .mode-button:active {
+    background-color: rgba(255, 255, 255, 0.32);
+}
+.turbo-search .mode-button image { -gtk-icon-size: 28px; }
+.turbo-search .file-path { color: #d0c3db; font-size: 12px; }
